@@ -1,7 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const dotenv = require("dotenv");
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 dotenv.config();
 const app = express();
@@ -66,16 +66,47 @@ async function run() {
 
     //   📝Session Collection
     //   getAll Session
-    app.get("/sessions", async (req, res) => {
+    app.get("/all-sessions", async (req, res) => {
       const result = await sessionCollection.find().toArray();
       res.send(result);
     });
 
-    //   post a session
+    //  create a post  session
     app.post("/session", async (req, res) => {
-      const session = req.body;
-      const result = await sessionCollection.insertOne(session);
-      res.send(result);
+      try {
+        const session = req.body;
+        session.createdAt = new Date().toISOString();
+        session.status = session.status || "pending"; // default value if not sent
+
+        const result = await sessionCollection.insertOne(session);
+        res.status(201).send(result);
+      } catch (error) {
+        console.error("❌ Error inserting session:", error);
+        res.status(500).send({ error: "Failed to create session" });
+      }
+    });
+    //   get single session form sessionCollection
+    // Assuming you have a `sessionCollection` and `reviewsCollection`
+
+    app.get("/session/:id", async (req, res) => {
+        const id = req.params.id;
+        // console.log(id);
+      const query = { _id: new ObjectId(id) };
+
+        const session = await sessionCollection.findOne(query);
+        // console.log(session);
+      //   const reviews = await reviewsCollection.find({ sessionId: id }).toArray();
+
+      // Calculate average rating
+      //   const averageRating =
+      //     reviews.length > 0
+      //       ? (
+      //           reviews.reduce((sum, r) => sum + (r.rating || 0), 0) /
+      //           reviews.length
+      //         ).toFixed(1)
+      //       : null;
+      //, reviews, averageRating
+      res.send({session});
     });
   } catch (err) {
     console.error("❌ MongoDB Error:", err);
