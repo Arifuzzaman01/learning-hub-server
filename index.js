@@ -24,8 +24,10 @@ async function run() {
 
     const db = client.db("learning-hub");
     const usersCollection = db.collection("users");
+    const sessionCollection = db.collection("session");
 
-    // 🚀 Example: Add user
+    // 🚀  User collection
+    // Example: Add user
     app.post("/users", async (req, res) => {
       const user = req.body;
       const email = user.email;
@@ -60,6 +62,20 @@ async function run() {
     app.get("/users", async (req, res) => {
       const users = await usersCollection.find().toArray();
       res.send(users);
+    });
+
+    //   📝Session Collection
+    //   getAll Session
+    app.get("/sessions", async (req, res) => {
+      const result = await sessionCollection.find().toArray();
+      res.send(result);
+    });
+
+    //   post a session
+    app.post("/session", async (req, res) => {
+      const session = req.body;
+      const result = await sessionCollection.insertOne(session);
+      res.send(result);
     });
   } catch (err) {
     console.error("❌ MongoDB Error:", err);
