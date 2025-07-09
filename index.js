@@ -222,7 +222,14 @@ async function run() {
       );
       res.send(result);
     });
-    // Materials api
+    // ⚒ Materials api
+    // ger materials by id
+    app.get("/materials/session/:id", async (req, res) => {
+      const sessionId = req.params.id;
+      const result = await materialsCollection.find({ sessionId }).toArray();
+      res.send(result);
+    });
+
     // POST: Upload new material
     app.post("/materials", async (req, res) => {
       const material = req.body; // { title, sessionId, tutorEmail, imageURL, driveLink }
