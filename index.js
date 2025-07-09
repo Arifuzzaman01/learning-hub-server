@@ -28,6 +28,7 @@ async function run() {
     const bookingCollection = db.collection("booking");
     const reviewCollection = db.collection("review");
     const notesCollection = db.collection("notes");
+    const materialsCollection = db.collection("materials");
 
     // 🚀  User collection
     // Example: Add user
@@ -110,6 +111,41 @@ async function run() {
           : null;
       //
       res.send({ session, reviews, averageRating });
+    });
+
+    // Tutor all session by email
+    app.get("/tutor-sessions", async (req, res) => {
+      const email = req.query.email;
+      const sessions = await sessionCollection
+        .find({ tutorEmail: email })
+        .toArray();
+      res.send(sessions);
+    });
+    //resend request
+    app.patch("/session/resend-request/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await sessionCollection.updateOne(
+        { _id: new ObjectId(id), status: "rejected" },
+        { $set: { status: "pending", updatedAt: new Date().toISOString() } }
+      );
+      res.send(result);
+    });
+
+    // POST: Upload new material
+    app.post("/materials", async (req, res) => {
+      const material = req.body; // { title, sessionId, tutorEmail, imageURL, driveLink }
+      material.createdAt = new Date().toISOString();
+      const result = await materialsCollection.insertOne(material);
+      res.send(result);
+    });
+
+    // GET: All approved sessions by this tutor
+    app.get("/approved-sessions", async (req, res) => {
+      const email = req.query.email;
+      const sessions = await sessionCollection
+        .find({ tutorEmail: email, status: "approved" })
+        .toArray();
+      res.send(sessions);
     });
 
     //  📚 booking collection
