@@ -25,6 +25,9 @@ async function run() {
     const db = client.db("learning-hub");
     const usersCollection = db.collection("users");
     const sessionCollection = db.collection("session");
+    const bookingCollection = db.collection("booking");
+    const reviewCollection = db.collection("review");
+    const notesCollection = db.collection("notes");
 
     // 🚀  User collection
     // Example: Add user
@@ -89,25 +92,110 @@ async function run() {
     // Assuming you have a `sessionCollection` and `reviewsCollection`
 
     app.get("/session/:id", async (req, res) => {
-        const id = req.params.id;
-        // console.log(id);
+      const id = req.params.id;
+      // console.log(id);
       const query = { _id: new ObjectId(id) };
 
-        const session = await sessionCollection.findOne(query);
-        // console.log(session);
-      //   const reviews = await reviewsCollection.find({ sessionId: id }).toArray();
+      const session = await sessionCollection.findOne(query);
+      // console.log(session);
+      const reviews = await reviewCollection.find({ sessionId: id }).toArray();
 
       // Calculate average rating
-      //   const averageRating =
-      //     reviews.length > 0
-      //       ? (
-      //           reviews.reduce((sum, r) => sum + (r.rating || 0), 0) /
-      //           reviews.length
-      //         ).toFixed(1)
-      //       : null;
-      //, reviews, averageRating
-      res.send({session});
+      const averageRating =
+        reviews.length > 0
+          ? (
+              reviews.reduce((sum, r) => sum + (r.rating || 0), 0) /
+              reviews.length
+            ).toFixed(1)
+          : null;
+      //
+      res.send({ session, reviews, averageRating });
     });
+
+    //  📚 booking collection
+
+    // GET /bookings?email=student@email.com
+    app.get("/bookings", async (req, res) => {
+      const email = req.query.email;
+      // console.log(email);
+      const result = await bookingCollection
+        .find({ studentEmail: email })
+        .toArray();
+      // console.log(result);
+      res.send(result);
+    });
+
+    // POST /bookings
+    app.post("/bookings", async (req, res) => {
+      try {
+        const booking = req.body;
+        booking.bookedAt = new Date().toISOString(); // timestamp
+
+        const result = await bookingCollection.insertOne(booking);
+        res.status(201).send(result);
+      } catch (err) {
+        console.error("Booking error:", err);
+        res.status(500).send({ error: "Booking failed" });
+      }
+    });
+
+    // review and rating
+    // POST /reviews
+    app.post("/reviews", async (req, res) => {
+      const review = req.body; // { sessionId, studentEmail, rating, comment }
+      review.createdAt = new Date().toISOString();
+      const result = await reviewCollection.insertOne(review);
+      res.send(result);
+    });
+
+    // GET /reviews/:sessionId
+    app.get("/reviews/:sessionId", async (req, res) => {
+      const sessionId = req.params.sessionId;
+      const result = await reviewCollection
+        .find({ sessionId: sessionId })
+        .sort({ createdAt: -1 })
+        .toArray();
+      res.send(result);
+    });
+
+    //🚀 NOTE
+    // POST /notes
+    app.post("/notes", async (req, res) => {
+      const note = req.body; // { email, title, description }
+      note.createdAt = new Date().toISOString();
+      const result = await notesCollection.insertOne(note);
+      res.send(result);
+    });
+    // manage and view all notes
+    // GET notes by email
+    app.get("/notes", async (req, res) => {
+      const email = req.query.email;
+      const notes = await notesCollection
+        .find({ email })
+        .sort({ createdAt: -1 })
+        .toArray();
+      res.send(notes);
+    });
+
+    // DELETE a note
+    app.delete("/notes/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await notesCollection.deleteOne({ _id: new ObjectId(id) });
+      res.send(result);
+    });
+
+    // PATCH (update) a note
+    app.patch("/notes/:id", async (req, res) => {
+      const id = req.params.id;
+      const updateData = req.body; // { title, description }
+      const result = await notesCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { ...updateData, updatedAt: new Date().toISOString() } }
+      );
+      res.send(result);
+    });
+
+    // end
   } catch (err) {
     console.error("❌ MongoDB Error:", err);
   }
