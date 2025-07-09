@@ -131,14 +131,6 @@ async function run() {
       res.send(result);
     });
 
-    // POST: Upload new material
-    app.post("/materials", async (req, res) => {
-      const material = req.body; // { title, sessionId, tutorEmail, imageURL, driveLink }
-      material.createdAt = new Date().toISOString();
-      const result = await materialsCollection.insertOne(material);
-      res.send(result);
-    });
-
     // GET: All approved sessions by this tutor
     app.get("/approved-sessions", async (req, res) => {
       const email = req.query.email;
@@ -227,6 +219,43 @@ async function run() {
       const result = await notesCollection.updateOne(
         { _id: new ObjectId(id) },
         { $set: { ...updateData, updatedAt: new Date().toISOString() } }
+      );
+      res.send(result);
+    });
+    // Materials api
+    // POST: Upload new material
+    app.post("/materials", async (req, res) => {
+      const material = req.body; // { title, sessionId, tutorEmail, imageURL, driveLink }
+      material.createdAt = new Date().toISOString();
+      const result = await materialsCollection.insertOne(material);
+      res.send(result);
+    });
+    // Get all materials by tutor email
+    app.get("/materials", async (req, res) => {
+      const email = req.query.email;
+      const result = await materialsCollection
+        .find({ tutorEmail: email })
+        .sort({ createdAt: -1 })
+        .toArray();
+      res.send(result);
+    });
+
+    // Delete material
+    app.delete("/materials/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await materialsCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
+      res.send(result);
+    });
+
+    // Update material
+    app.patch("/materials/:id", async (req, res) => {
+      const id = req.params.id;
+      const updated = req.body;
+      const result = await materialsCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { ...updated, updatedAt: new Date().toISOString() } }
       );
       res.send(result);
     });
