@@ -327,6 +327,24 @@ async function run() {
       );
       res.send(result);
     });
+    //  update and delete session
+    app.patch("/session/:id", async (req, res) => {
+      const id = req.params.id;
+      const updated = req.body;
+      const result = await sessionCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { ...updated, updatedAt: new Date().toISOString() } }
+      );
+      res.send(result);
+    });
+
+    app.delete("/session/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await sessionCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
+      res.send(result);
+    });
 
     // end
   } catch (err) {
