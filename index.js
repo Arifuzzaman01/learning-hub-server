@@ -313,6 +313,20 @@ async function run() {
 
       res.send(result);
     });
+    // reject a session
+    app.patch("/session/reject/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await sessionCollection.updateOne(
+        { _id: new ObjectId(id), status: "pending" },
+        {
+          $set: {
+            status: "rejected",
+            rejectedAt: new Date().toISOString(),
+          },
+        }
+      );
+      res.send(result);
+    });
 
     // end
   } catch (err) {
