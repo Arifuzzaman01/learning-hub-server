@@ -295,6 +295,24 @@ async function run() {
 
       res.send(result);
     });
+    // approved a session
+    app.patch("/session/approve/:id", async (req, res) => {
+      const id = req.params.id;
+      const { fee } = req.body; // if 0 = free, otherwise paid
+
+      const result = await sessionCollection.updateOne(
+        { _id: new ObjectId(id), status: "pending" },
+        {
+          $set: {
+            status: "approved",
+            fee,
+            approvedAt: new Date().toISOString(),
+          },
+        }
+      );
+
+      res.send(result);
+    });
 
     // end
   } catch (err) {
