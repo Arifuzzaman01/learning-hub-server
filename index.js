@@ -266,6 +266,23 @@ async function run() {
       );
       res.send(result);
     });
+    // ADMIN
+    // get user with search filter
+    app.get("/usersForAdmin", async (req, res) => {
+      const search = req.query.search || "";
+      const query = {
+        $or: [
+          { name: { $regex: search, $options: "i" } },
+          { email: { $regex: search, $options: "i" } },
+        ],
+      };
+
+      const result = await usersCollection
+        .find(query)
+        .sort({ createdAt: -1 })
+        .toArray();
+      res.send(result);
+    });
 
     // end
   } catch (err) {
