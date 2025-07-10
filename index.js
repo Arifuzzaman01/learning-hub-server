@@ -67,6 +67,12 @@ async function run() {
       const users = await usersCollection.find().toArray();
       res.send(users);
     });
+    // get user by email
+    app.get("/user", async (req, res) => {
+      const email = req.query.email;
+      const result = await usersCollection.findOne({ email });
+      res.send(result);
+    });
 
     //   📝Session Collection
     //   getAll Session
@@ -313,6 +319,19 @@ async function run() {
 
       res.send(result);
     });
+    //
+    app.patch("/session/update/:id", async (req, res) => {
+      const id = req.params.id;
+      const updateData = req.body;
+
+      const result = await sessionCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { ...updateData, updatedAt: new Date().toISOString() } }
+      );
+
+      res.send(result);
+    });
+
     // reject a session
     app.patch("/session/reject/:id", async (req, res) => {
       const id = req.params.id;
@@ -341,6 +360,21 @@ async function run() {
     app.delete("/session/:id", async (req, res) => {
       const id = req.params.id;
       const result = await sessionCollection.deleteOne({
+        _id: new ObjectId(id),
+      });
+      res.send(result);
+    });
+    //
+    // Get all materials
+    app.get("/admin/materials", async (req, res) => {
+      const result = await materialsCollection.find().toArray();
+      res.send(result);
+    });
+
+    // Delete a material by ID
+    app.delete("/admin/materials/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await materialsCollection.deleteOne({
         _id: new ObjectId(id),
       });
       res.send(result);
