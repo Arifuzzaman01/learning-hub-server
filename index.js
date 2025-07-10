@@ -283,6 +283,18 @@ async function run() {
         .toArray();
       res.send(result);
     });
+    // update user role
+    app.patch("/users/role/:id", async (req, res) => {
+      const id = req.params.id;
+      const { role } = req.body;
+
+      const result = await usersCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { role } }
+      );
+
+      res.send(result);
+    });
 
     // end
   } catch (err) {
