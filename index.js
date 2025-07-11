@@ -1,21 +1,43 @@
+const dotenv = require("dotenv");
 const express = require("express");
 const cors = require("cors");
-const dotenv = require("dotenv");
-const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
-
+const jwt = require("jsonwebtoken");
+const cookie = require("cookie-parser");
 dotenv.config();
+const stripe = require("stripe")(process.env.API_SECRET_KEY);
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+console.log("Stripe Key:", process.env.API_SECRET_KEY);
+
 const app = express();
 const port = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors());
+app.use(
+  cors({
+    origin: ["http://localhost:5173"],
+    credentials: true,
+  })
+);
 app.use(express.json());
+app.use(cookie());
 
 // MongoDB Connection
 const uri = process.env.DB_MONGO_URI;
 const client = new MongoClient(uri, {
   serverApi: ServerApiVersion.v1,
 });
+//
+const verifyJWT = (req, res, next) => {
+  const token = req?.cookies?.token;
+  // console.log("token",token);
+  if (!token) return res.status(401).send("Unauthorized");
+
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    if (err) return res.status(403).send("Forbidden");
+    req.user = decoded;
+    next();
+  });
+};
 
 async function run() {
   try {
@@ -29,6 +51,61 @@ async function run() {
     const reviewCollection = db.collection("review");
     const notesCollection = db.collection("notes");
     const materialsCollection = db.collection("materials");
+
+    // Admin middleware\
+    const verifyAdmin = async (req, res, next) => {
+      try {
+        const userEmail = req.user?.email;
+
+        // 🧠 Replace this with your MongoDB user collection
+        const user = await usersCollection.findOne({ email: userEmail });
+
+        if (user?.role !== "admin") {
+          return res
+            .status(403)
+            .send({ message: "Forbidden - Admin only access" });
+        }
+
+        next();
+      } catch (err) {
+        console.error("Admin Verify Error:", err);
+        res.status(500).send({ message: "Server Error" });
+      }
+    };
+    // Tutor middleware\
+    const verifyTutor = async (req, res, next) => {
+      try {
+        const userEmail = req.user?.email;
+
+        // 🧠 Replace this with your MongoDB user collection
+        const user = await usersCollection.findOne({ email: userEmail });
+
+        if (user?.role !== "tutor") {
+          return res
+            .status(403)
+            .send({ message: "Forbidden - Tutor only access" });
+        }
+
+        next();
+      } catch (err) {
+        console.error("Admin Verify Error:", err);
+        res.status(500).send({ message: "Server Error" });
+      }
+    };
+
+    // JWT
+    app.post("/jwt", (req, res) => {
+      const userData = { email: req.body.email };
+      const token = jwt.sign(userData, process.env.JWT_SECRET, {
+        expiresIn: "7d",
+      });
+      res
+        .cookie("token", token, {
+          httpOnly: true,
+          secure: false,
+        })
+        .send({ success: true });
+    });
 
     // 🚀  User collection
     // Example: Add user
@@ -68,7 +145,7 @@ async function run() {
       res.send(users);
     });
     // get user by email
-    app.get("/user", async (req, res) => {
+    app.get("/user", verifyJWT, async (req, res) => {
       const email = req.query.email;
       const result = await usersCollection.findOne({ email });
       res.send(result);
@@ -366,7 +443,7 @@ async function run() {
     });
     //
     // Get all materials
-    app.get("/admin/materials", async (req, res) => {
+    app.get("/admin/materials", verifyJWT, verifyAdmin, async (req, res) => {
       const result = await materialsCollection.find().toArray();
       res.send(result);
     });
@@ -378,6 +455,26 @@ async function run() {
         _id: new ObjectId(id),
       });
       res.send(result);
+    });
+    // Payment process
+
+    app.post("/create-payment-intent", async (req, res) => {
+      const { fee } = req.body;
+
+      const amount = parseInt(fee * 100); // Stripe takes smallest currency unit
+
+      try {
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount,
+          currency: "usd",
+          payment_method_types: ["card"],
+        });
+
+        res.send({ clientSecret: paymentIntent.client_secret });
+      } catch (err) {
+        console.error(err);
+        res.status(500).send({ error: err.message });
+      }
     });
 
     // end
