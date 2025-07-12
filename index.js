@@ -476,6 +476,45 @@ async function run() {
         res.status(500).send({ error: err.message });
       }
     });
+    
+   app.get("/tutors", async (req, res) => {
+  try {
+    // Get all users who are tutors
+    const users = await usersCollection.find({ role: "tutor" }).toArray();
+
+    // Get all sessions and reviews once for efficiency
+    const sessions = await sessionCollection.find().toArray();
+    const reviews = await reviewCollection.find().toArray();
+
+    // Prepare final result array
+    const tutors = users.map((user) => {
+      const tutorEmail = user.email;
+
+      // Filter sessions and reviews for this tutor
+      const tutorSessions = sessions.filter(s => s.tutorEmail === tutorEmail);
+      const tutorReviews = reviews.filter(r => r.tutorEmail === tutorEmail);
+
+      // Calculate average rating
+      const totalRatings = tutorReviews.reduce((sum, r) => sum + (r.rating || 0), 0);
+      const averageRating = tutorReviews.length ? (totalRatings / tutorReviews.length) : 0;
+
+      return {
+        name: user.name,
+        email: user.email,
+        imageURL: user.imageURL,
+        totalSessions: tutorSessions.length,
+        totalReviews: tutorReviews.length,
+        averageRating: parseFloat(averageRating.toFixed(1)),
+      };
+    });
+
+    res.send(tutors);
+  } catch (error) {
+    console.error("Error fetching tutors:", error);
+    res.status(500).send({ message: "Internal Server Error" });
+  }
+});
+
 
     // end
   } catch (err) {
