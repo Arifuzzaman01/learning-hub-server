@@ -14,7 +14,7 @@ const port = process.env.PORT || 3000;
 // Middleware
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin: ["http://localhost:5173", "https://learn-hub-ec1a2.web.app"],
     credentials: true,
   })
 );
@@ -31,7 +31,7 @@ const verifyJWT = (req, res, next) => {
   const token = req?.cookies?.token;
   // console.log("token",token);
   if (!token) return res.status(401).send("Unauthorized");
-
+  // console.log(req.email);
   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
     if (err) return res.status(403).send("Forbidden");
     req.user = decoded;
@@ -41,8 +41,8 @@ const verifyJWT = (req, res, next) => {
 
 async function run() {
   try {
-    await client.connect();
-    console.log("✅ Connected to MongoDB");
+    // await client.connect();
+    // console.log("✅ Connected to MongoDB");
 
     const db = client.db("learning-hub");
     const usersCollection = db.collection("users");
@@ -443,7 +443,7 @@ async function run() {
     });
     //
     // Get all materials
-    app.get("/admin/materials", verifyJWT, verifyAdmin, async (req, res) => {
+    app.get("/admin/materials", verifyJWT, async (req, res) => {
       const result = await materialsCollection.find().toArray();
       res.send(result);
     });
@@ -476,45 +476,53 @@ async function run() {
         res.status(500).send({ error: err.message });
       }
     });
-    
-   app.get("/tutors", async (req, res) => {
-  try {
-    // Get all users who are tutors
-    const users = await usersCollection.find({ role: "tutor" }).toArray();
 
-    // Get all sessions and reviews once for efficiency
-    const sessions = await sessionCollection.find().toArray();
-    const reviews = await reviewCollection.find().toArray();
+    app.get("/tutors", async (req, res) => {
+      try {
+        // Get all users who are tutors
+        const users = await usersCollection.find({ role: "tutor" }).toArray();
 
-    // Prepare final result array
-    const tutors = users.map((user) => {
-      const tutorEmail = user.email;
+        // Get all sessions and reviews once for efficiency
+        const sessions = await sessionCollection.find().toArray();
+        const reviews = await reviewCollection.find().toArray();
 
-      // Filter sessions and reviews for this tutor
-      const tutorSessions = sessions.filter(s => s.tutorEmail === tutorEmail);
-      const tutorReviews = reviews.filter(r => r.tutorEmail === tutorEmail);
+        // Prepare final result array
+        const tutors = users.map((user) => {
+          const tutorEmail = user.email;
 
-      // Calculate average rating
-      const totalRatings = tutorReviews.reduce((sum, r) => sum + (r.rating || 0), 0);
-      const averageRating = tutorReviews.length ? (totalRatings / tutorReviews.length) : 0;
+          // Filter sessions and reviews for this tutor
+          const tutorSessions = sessions.filter(
+            (s) => s.tutorEmail === tutorEmail
+          );
+          const tutorReviews = reviews.filter(
+            (r) => r.tutorEmail === tutorEmail
+          );
 
-      return {
-        name: user.name,
-        email: user.email,
-        imageURL: user.imageURL,
-        totalSessions: tutorSessions.length,
-        totalReviews: tutorReviews.length,
-        averageRating: parseFloat(averageRating.toFixed(1)),
-      };
+          // Calculate average rating
+          const totalRatings = tutorReviews.reduce(
+            (sum, r) => sum + (r.rating || 0),
+            0
+          );
+          const averageRating = tutorReviews.length
+            ? totalRatings / tutorReviews.length
+            : 0;
+
+          return {
+            name: user.name,
+            email: user.email,
+            imageURL: user.imageURL,
+            totalSessions: tutorSessions.length,
+            totalReviews: tutorReviews.length,
+            averageRating: parseFloat(averageRating.toFixed(1)),
+          };
+        });
+
+        res.send(tutors);
+      } catch (error) {
+        console.error("Error fetching tutors:", error);
+        res.status(500).send({ message: "Internal Server Error" });
+      }
     });
-
-    res.send(tutors);
-  } catch (error) {
-    console.error("Error fetching tutors:", error);
-    res.status(500).send({ message: "Internal Server Error" });
-  }
-});
-
 
     // end
   } catch (err) {
