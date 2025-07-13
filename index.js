@@ -102,7 +102,9 @@ async function run() {
       res
         .cookie("token", token, {
           httpOnly: true,
-          secure: false,
+          secure: true,   //localhost == false 
+          sameSite: "none",  // localhost == strict || lax
+          maxAge: 7*24*60*60*1000  
         })
         .send({ success: true });
     });
